@@ -12,8 +12,7 @@ export default function App() {
       <h1>Astrology Chart Generator</h1>
       <BirthForm setChartData={setChartData} setLoading={setLoading} loading={loading} />
       {loading && <p>Loading...</p>}
-      {chartData && <ChartResults data={chartData} />}
-      <ComingSoon />
+      {chartData ? <ChartResults data={chartData} /> : <p>No chart data yet.</p>}      <ComingSoon />
     </div>
   );
 }
