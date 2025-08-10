@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { geocodeCity } from '../utils/geocode';
+import { api } from '../utils/api'; // ✅ keep imports at the very top
 
 export default function BirthForm({ setChartData, setLoading, loading }) {
   const [form, setForm] = useState({
@@ -15,6 +16,13 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
   // 🧠 Debounce + request guard
   const lastReqId = useRef(0);
   const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    // Clear any pending debounce on unmount
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   // 🔄 Handle geocoding when city is typed (robust version)
   async function handleCityChange(e) {
@@ -55,8 +63,7 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
     e.preventDefault();
     setLoading(true);
 
-    const apiUrl = 'https://astro-backend-clean-main.onrender.com/api/birth-chart-swisseph';
-
+    const apiUrl = api('/api/birth-chart-swisseph');
     console.log('🚀 Submitting form...');
     console.log('📍 Final coordinates in state:', coords);
 
@@ -76,8 +83,8 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json(); 
-      console.log("🎯 Birth chart response from backend:", data);
+      const data = await res.json();
+      console.log('🎯 Birth chart response from backend:', data);
       setChartData(data);
     } catch (err) {
       alert('Error fetching chart!');
@@ -138,11 +145,7 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
       <div>
         <label>
           City of Birth:
-          <input
-            value={form.city}
-            onChange={handleCityChange}
-            required
-          />
+          <input value={form.city} onChange={handleCityChange} required />
         </label>
       </div>
 
