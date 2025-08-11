@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { geocodeCity } from '../utils/geocode';
-import { api } from '../utils/api'; // ✅ keep imports at the very top
+import { api } from '../utils/api';
 
 export default function BirthForm({ setChartData, setLoading, loading }) {
   const [form, setForm] = useState({
@@ -10,50 +10,52 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
     country: '',
     city: '',
   });
-
   const [coords, setCoords] = useState({ latitude: '', longitude: '' });
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // 🧠 Debounce + request guard
+  // debounced geocode
   const lastReqId = useRef(0);
   const debounceTimer = useRef(null);
 
-  useEffect(() => {
-    // Clear any pending debounce on unmount
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, []);
+  const isFormFilled = () =>
+    form.date.trim() &&
+    form.time.trim() &&
+    form.country.trim() &&
+    form.city.trim();
 
-  // 🔄 Handle geocoding when city is typed (robust version)
+  const hasCoords = () =>
+    coords.latitude !== '' &&
+    coords.longitude !== '' &&
+    !Number.isNaN(Number(coords.latitude)) &&
+    !Number.isNaN(Number(coords.longitude));
+
+  const isSubmitDisabled = () => loading || !isFormFilled() || !hasCoords();
+
+  // geocoding on city change
   async function handleCityChange(e) {
     const city = e.target.value;
     setForm((prev) => ({ ...prev, city }));
 
-    // Clear previous debounce
+    setErrorMsg('');
+
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-    // If not enough characters or no country yet, clear coords and bail
     if (city.trim().length < 3 || !form.country.trim()) {
       setCoords({ latitude: '', longitude: '' });
       return;
     }
 
-    // Debounce 300ms to avoid spamming the backend
     const reqId = ++lastReqId.current;
     debounceTimer.current = setTimeout(async () => {
       try {
-        console.log('🌐 Fetching geocode for:', { city, country: form.country });
         const { latitude, longitude } = await geocodeCity(city, form.country);
-
-        // Only accept the latest response
         if (reqId === lastReqId.current) {
-          console.log('✅ Geocode OK:', { latitude, longitude });
           setCoords({ latitude, longitude });
         }
       } catch (err) {
-        console.error('❌ Geocoding failed:', err);
         if (reqId === lastReqId.current) {
           setCoords({ latitude: '', longitude: '' });
+          setErrorMsg('Could not find that location. Please check city & country.');
         }
       }
     }, 300);
@@ -61,11 +63,21 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setErrorMsg('');
+
+    // last guard on client
+    if (!isFormFilled()) {
+      setErrorMsg('Please fill date, time, country and city.');
+      return;
+    }
+    if (!hasCoords()) {
+      setErrorMsg('Coordinates are missing. Please pick a valid city.');
+      return;
+    }
+
     setLoading(true);
 
     const apiUrl = api('/api/birth-chart-swisseph');
-    console.log('🚀 Submitting form...');
-    console.log('📍 Final coordinates in state:', coords);
 
     const body = {
       date: form.date,
@@ -73,8 +85,6 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
       latitude: coords.latitude,
       longitude: coords.longitude,
     };
-
-    console.log('📤 Payload to backend:', body);
 
     try {
       const res = await fetch(apiUrl, {
@@ -84,10 +94,17 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
       });
 
       const data = await res.json();
-      console.log('🎯 Birth chart response from backend:', data);
+
+      if (!res.ok) {
+        // show backend message if available
+        setErrorMsg(data?.error || 'Failed to fetch birth chart.');
+        setChartData(null);
+        return;
+      }
+
       setChartData(data);
     } catch (err) {
-      alert('Error fetching chart!');
+      setErrorMsg('Network error. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -160,8 +177,12 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
         </label>
       </div>
 
-      <button type="submit" disabled={loading}>
-        Get Chart
+      {!!errorMsg && (
+        <p style={{ color: '#ff6b6b', marginTop: '0.5em' }}>{errorMsg}</p>
+      )}
+
+      <button type="submit" disabled={isSubmitDisabled()}>
+        {loading ? 'Working…' : 'Get Chart'}
       </button>
     </form>
   );
