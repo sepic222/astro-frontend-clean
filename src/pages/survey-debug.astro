@@ -1,0 +1,41 @@
+---
+import { buildAnswersFromForm, submitSurvey } from "../lib/surveyClient.ts";
+
+// Fake your current form shape (replace with your real state)
+const currentForm = {
+  section2: {
+    gender: "female",
+    attraction_style: ["attracted_to_men"],   // must match SurveyOption.value
+    love_o_meter: "cinephile_supreme",
+    life_role: ["rescuer"],                        // must match SurveyOption.value
+    escapism_style: ["cozy_comedown"],          // must match SurveyOption.value
+    first_obsession_text: "gvgvvvl",
+  },
+  email: "saraellenpicard@icloud.com",
+};
+---
+
+<button id="send">Send test submission</button>
+<pre id="out"></pre>
+
+<script type="module">
+  import { buildAnswersFromForm, submitSurvey } from "/src/lib/surveyClient.ts";
+
+  const btn = document.getElementById("send");
+  const out = document.getElementById("out");
+  const form = JSON.parse(document.getElementById("seed")?.textContent || "{}"); // or just inline currentForm
+
+  // For the debug page, we can embed currentForm directly:
+  const currentForm = {{ JSON.stringify(currentForm) }};
+
+  btn.addEventListener("click", async () => {
+    out.textContent = "Sending…";
+    try {
+      const answers = buildAnswersFromForm(currentForm);
+      const result = await submitSurvey({ userEmail: currentForm.email, answers });
+      out.textContent = JSON.stringify(result, null, 2);
+    } catch (e) {
+      out.textContent = "Error: " + (e?.message || e);
+    }
+  });
+</script>

@@ -5,19 +5,25 @@ export async function geocodeCity(city, country) {
   const url = api(
     `/api/geocode?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}`
   );
+  console.log('🌐 geocode fetch:', url);
 
   const res = await fetch(url);
+  const text = await res.text().catch(() => '');
+
   if (!res.ok) {
-    throw new Error(`Geocoding request failed: ${res.status} ${res.statusText}`);
+    throw new Error(`Geocoding request failed: ${res.status} ${res.statusText} — ${text}`);
   }
 
-  const data = await res.json();
-  if (!data.latitude || !data.longitude) {
-    throw new Error('Geocoding failed: No coordinates received');
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (e) {
+    throw new Error(`Geocoding response was not JSON: ${text}`);
   }
 
-  return {
-    latitude: data.latitude,
-    longitude: data.longitude,
-  };
+  if (!data?.latitude || !data?.longitude) {
+    throw new Error(`Geocoding returned no coords: ${JSON.stringify(data)}`);
+  }
+
+  return { latitude: data.latitude, longitude: data.longitude };
 }

@@ -1,3 +1,4 @@
+// src/components/BirthForm.jsx
 import React, { useState, useRef } from 'react';
 import { geocodeCity } from '../utils/geocode';
 import { api } from '../utils/api';
@@ -10,6 +11,7 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
     country: '',
     city: '',
   });
+
   const [coords, setCoords] = useState({ latitude: '', longitude: '' });
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -35,7 +37,6 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
   async function handleCityChange(e) {
     const city = e.target.value;
     setForm((prev) => ({ ...prev, city }));
-
     setErrorMsg('');
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -52,7 +53,7 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
         if (reqId === lastReqId.current) {
           setCoords({ latitude, longitude });
         }
-      } catch (err) {
+      } catch (_err) {
         if (reqId === lastReqId.current) {
           setCoords({ latitude: '', longitude: '' });
           setErrorMsg('Could not find that location. Please check city & country.');
@@ -65,7 +66,6 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
     e.preventDefault();
     setErrorMsg('');
 
-    // last guard on client
     if (!isFormFilled()) {
       setErrorMsg('Please fill date, time, country and city.');
       return;
@@ -77,6 +77,7 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
 
     setLoading(true);
 
+    // ✅ Use the rich backend route
     const apiUrl = api('/api/birth-chart-swisseph');
 
     const body = {
@@ -96,7 +97,6 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
       const data = await res.json();
 
       if (!res.ok) {
-        // show backend message if available
         setErrorMsg(data?.error || 'Failed to fetch birth chart.');
         setChartData(null);
         return;
@@ -104,8 +104,9 @@ export default function BirthForm({ setChartData, setLoading, loading }) {
 
       setChartData(data);
     } catch (err) {
-      setErrorMsg('Network error. Please try again.');
       console.error(err);
+      setErrorMsg('Network error. Please try again.');
+      setChartData(null);
     } finally {
       setLoading(false);
     }

@@ -4,8 +4,6 @@
 export const API_BASE =
   (import.meta.env && import.meta.env.VITE_API_BASE) || "http://localhost:3001";
 
-console.log("🔍 API_BASE is set to:", API_BASE); // Debug: check what frontend sees
-
 // Ensure there's no trailing slash in the base
 const base = API_BASE.replace(/\/+$/, "");
 
